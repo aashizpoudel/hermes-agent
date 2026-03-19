@@ -72,6 +72,49 @@ _OR_HEADERS = {
     "X-OpenRouter-Categories": "productivity,cli-agent",
 }
 
+# OpenCode Zen/Go API headers
+def _opencode_headers(session_id=None, cwd=None):
+    """Generate OpenCode Zen/Go API headers."""
+    import uuid
+    import os
+    import time
+    from pathlib import Path
+    
+    # Stable session UUID
+    if session_id:
+        session_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"hermes-session-{session_id}")
+    else:
+        # Fallback to process-based stable ID
+        import hashlib
+        stable_id = f"{os.getpid()}-{time.time()}"
+        session_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"hermes-{stable_id}")
+    
+    # Current directory
+    cwd = cwd or os.getcwd()
+    
+    # Project root (git repo or cwd)
+    project_root = cwd
+    try:
+        import subprocess
+        git_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"], 
+            cwd=cwd, stderr=subprocess.DEVNULL
+        ).decode().strip()
+        if git_root:
+            project_root = git_root
+    except:
+        pass  # Not a git repo or git not available
+    
+    return {
+        "User-Agent": "opencode-cli",
+        "x-opencode-client": "hermes-agent",
+        "x-opencode-session": str(session_uuid),
+        "x-opencode-request": str(uuid.uuid4()),  # Fresh per request
+        "x-opencode-project": project_root,
+        "x-opencode-directory": cwd,
+        "x-opencode-workspace": project_root,  # Same as project for now
+    }
+
 # Nous Portal extra_body for product attribution.
 # Callers should pass this as extra_body in chat.completions.create()
 # when the auxiliary client is backed by Nous Portal.
@@ -528,6 +571,8 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
             from hermes_cli.models import copilot_default_headers
 
             extra["default_headers"] = copilot_default_headers()
+        elif provider_id in ("opencode-zen", "opencode-go"):
+            extra["default_headers"] = _opencode_headers()
         return OpenAI(api_key=api_key, base_url=base_url, **extra), model
 
     return None, None
@@ -959,6 +1004,8 @@ def resolve_provider_client(
             from hermes_cli.models import copilot_default_headers
 
             headers.update(copilot_default_headers())
+        elif provider in ("opencode-zen", "opencode-go"):
+            headers.update(_opencode_headers())
 
         client = OpenAI(api_key=api_key, base_url=base_url,
                         **({"default_headers": headers} if headers else {}))

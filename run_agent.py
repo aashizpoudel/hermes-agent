@@ -722,6 +722,11 @@ class AIAgent:
                     client_kwargs["default_headers"] = {
                         "User-Agent": "KimiCLI/1.3",
                     }
+                elif self.provider in ("opencode-zen", "opencode-go"):
+                    from agent.auxiliary_client import _opencode_headers
+                    client_kwargs["default_headers"] = _opencode_headers(
+                        session_id=self.session_id if hasattr(self, 'session_id') else None
+                    )
             else:
                 # No explicit creds — use the centralized provider router
                 from agent.auxiliary_client import resolve_provider_client
