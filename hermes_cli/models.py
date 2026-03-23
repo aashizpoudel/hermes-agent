@@ -577,6 +577,10 @@ def provider_model_ids(provider: Optional[str]) -> list[str]:
         live = _fetch_ai_gateway_models()
         if live:
             return live
+    if normalized == "opencode-zen":
+        live = _fetch_opencode_zen_models()
+        if live:
+            return live
     if normalized == "custom":
         base_url = _get_custom_base_url()
         if base_url:
@@ -633,6 +637,34 @@ def _fetch_anthropic_models(timeout: float = 5.0) -> Optional[list[str]]:
     except Exception as e:
         import logging
         logging.getLogger(__name__).debug("Failed to fetch Anthropic models: %s", e)
+        return None
+
+
+def _fetch_opencode_zen_models(timeout: float = 5.0) -> Optional[list[str]]:
+    api_key = os.getenv("OPENCODE_ZEN_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    base_url = os.getenv("OPENCODE_ZEN_BASE_URL", "").strip()
+    if not base_url:
+        from hermes_cli.auth import PROVIDER_REGISTRY
+        pconfig = PROVIDER_REGISTRY.get("opencode-zen")
+        if pconfig:
+            base_url = pconfig.inference_base_url or ""
+
+    if not base_url:
+        return None
+
+    url = base_url.rstrip("/") + "/models"
+    headers = {"Authorization": f"Bearer {api_key}", "User-Agent": "hermes-agent/1.0"}
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode())
+            return sorted([m.get("id", "") for m in data.get("data", []) if m.get("id")])
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug("Failed to fetch OpenCode Zen models: %s", e)
         return None
 
 
