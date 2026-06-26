@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="hermes-token" content="<!--HERMES_TOKEN-->">
+  <title>Hermes</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/dist/style.css">
+</head>
+<body class="bg-white text-zinc-900 antialiased min-h-screen">
+  <div id="app" class="grid grid-rows-[auto_1fr_auto] h-[100dvh] w-full overflow-hidden">
+
+    <!-- Sticky top bar -->
+    <header class="sticky top-0 z-20 flex items-center justify-between h-14 px-4 sm:px-6 border-b border-zinc-200 bg-white/85 backdrop-blur">
+      <div class="flex items-center gap-2">
+        <button id="sidebar-toggle" type="button"
+          class="inline-flex items-center justify-center w-8 h-8 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+          title="Sessions" aria-label="Toggle sessions sidebar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span class="font-semibold tracking-tight text-zinc-900">Hermes</span>
+        <button id="model-badge" type="button"
+          class="ml-2 inline-flex items-center gap-1.5 max-w-[14rem] px-2 py-1 rounded-md text-[12px] font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 hover:bg-zinc-200/70 hover:text-zinc-900 transition-colors"
+          title="Switch model" aria-label="Switch model">
+          <span id="model-badge-label" class="truncate">model</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-70"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="status-pill" data-status="idle"
+          class="text-[11px] uppercase tracking-wider font-medium px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-500"
+          aria-live="polite">idle</span>
+        <button id="info-btn" type="button"
+          class="inline-flex items-center justify-center w-8 h-8 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+          title="Model info" aria-label="Model info">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Sessions sidebar (drawer) -->
+    <div id="sidebar-backdrop" data-open="false"
+      class="fixed inset-0 z-30 bg-black/0 pointer-events-none transition-[background-color] duration-200 data-[open=true]:bg-black/10 data-[open=true]:pointer-events-auto"
+      aria-hidden="true"></div>
+    <aside id="sidebar" data-open="false"
+      class="fixed top-0 left-0 z-40 h-[100dvh] w-[85vw] sm:w-[17rem] max-w-[17rem] bg-white border-r border-zinc-200 shadow-sm flex flex-col"
+      aria-label="Sessions">
+      <div class="flex items-center justify-between h-14 px-4 border-b border-zinc-200 shrink-0">
+        <span class="font-semibold tracking-tight text-zinc-900 text-[14px]">Sessions</span>
+        <div class="flex items-center gap-1">
+          <button id="session-new" type="button"
+            class="inline-flex items-center justify-center w-7 h-7 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+            title="New session" aria-label="New session">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button id="sidebar-close" type="button"
+            class="inline-flex items-center justify-center w-7 h-7 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+            title="Close" aria-label="Close sidebar">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="session-list" class="flex-1 overflow-y-auto py-1" role="list"></div>
+    </aside>
+
+
+    <!-- Scrollable chat area -->
+    <main id="chat-scroll" class="overflow-y-auto overflow-x-hidden relative scroll-smooth">
+      <div id="messages" class="mx-auto w-full max-w-col px-4 sm:px-6 py-8 flex flex-col gap-8 overflow-x-hidden"></div>
+      <button id="jump-latest" data-hidden="true"
+        class="fixed left-1/2 -translate-x-1/2 bottom-28 z-10 px-3 py-1.5 rounded-full text-xs bg-white border border-zinc-200 text-zinc-700 shadow-sm hover:bg-zinc-50 transition-colors data-[hidden=true]:hidden"
+        aria-label="Jump to latest">↓ Jump to latest</button>
+    </main>
+
+    <!-- Model info popover (positioned absolute relative to body) -->
+    <div id="model-popover" data-hidden="true"
+      class="absolute top-14 right-4 sm:right-6 z-30 max-w-sm rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 shadow-lg whitespace-pre-wrap data-[hidden=true]:hidden"
+      role="dialog"></div>
+
+    <!-- Composer wrapper -->
+    <div class="px-3 pb-safe sm:px-6 sm:pb-6" style="padding-bottom: env(safe-area-inset-bottom, 1rem);">
+    <!-- Composer -->
+    <form id="composer" autocomplete="off"
+      class="border-t border-zinc-200 bg-white rounded-xl shadow-sm">
+      <div class="mx-auto w-full max-w-col px-2 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+
+        <div id="attachments" class="flex flex-wrap gap-2 mb-2 empty:hidden"></div>
+
+        <div id="clarify-box" data-hidden="true"
+          class="mb-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-3 shadow-sm data-[hidden=true]:hidden">
+          <div class="text-[10px] uppercase tracking-wider font-medium text-amber-700">Hermes needs input</div>
+          <div id="clarify-question" class="mt-1 text-[13px] leading-6 text-zinc-900"></div>
+          <div id="clarify-choices" class="mt-3 flex flex-wrap gap-2"></div>
+          <div class="mt-2 text-[11px] text-zinc-500">Choose an option or type your answer below.</div>
+        </div>
+
+        <div id="slash-popdown" data-hidden="true"
+          class="mb-2 rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden data-[hidden=true]:hidden"
+          role="listbox"></div>
+
+        <div class="relative flex items-center bg-zinc-50 border border-zinc-200 rounded-xl px-2 sm:px-3 focus-within:ring-2 focus-within:ring-accent-200 focus-within:border-accent-400 transition-shadow">
+          <div class="relative w-full flex items-end min-h-[3rem] sm:min-h-[3rem]">
+            <button type="button" id="attach-btn"
+              class="shrink-0 inline-flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9 mb-2 sm:mb-1.5 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 transition-colors"
+              title="Attach image" aria-label="Attach image">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="file-input" accept="image/*" hidden>
+
+            <textarea id="composer-input" rows="1"
+              class="flex-1 bg-transparent border-0 outline-none resize-none text-zinc-900 placeholder:text-zinc-400 py-3 sm:py-2 px-1 text-[16px] sm:text-[15px] leading-6 max-h-40"
+              placeholder="Message Hermes…" aria-label="Message" inputmode="text" enterkeyhint="send"></textarea>
+
+          <button type="submit" id="send-btn" data-hidden="false"
+            class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-md text-accent hover:bg-accent/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors data-[hidden=true]:hidden"
+            title="Send" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+          <button type="button" id="stop-btn" data-hidden="true"
+            class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-md text-red-500 hover:bg-red-50 transition-colors data-[hidden=true]:hidden"
+            title="Stop" aria-label="Stop">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </button>
+        </div>
+      </div>
+    </form>
+    </div>
+
+    <!-- Model picker modal -->
+    <div id="model-modal" data-open="false"
+      class="fixed inset-0 z-50 hidden data-[open=true]:flex items-center justify-center p-4"
+      role="dialog" aria-modal="true" aria-label="Choose model">
+      <div id="model-modal-backdrop" class="absolute inset-0 bg-black/20"></div>
+      <div id="model-modal-card"
+        class="relative w-full max-w-lg bg-white rounded-xl border border-zinc-200 shadow-xl overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+          <div class="flex items-baseline gap-2">
+            <span class="font-semibold tracking-tight text-zinc-900 text-[14px]">Choose model</span>
+            <span id="model-current-line" class="text-[11px] text-zinc-500 truncate"></span>
+          </div>
+          <button id="model-modal-close" type="button"
+            class="inline-flex items-center justify-center w-7 h-7 rounded-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+            title="Close" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="flex flex-col md:flex-row min-h-[18rem] max-h-[28rem]">
+          <div id="provider-list" class="md:w-[12rem] md:border-r border-b md:border-b-0 border-zinc-200 overflow-y-auto py-1"></div>
+          <div id="model-list" class="flex-1 overflow-y-auto py-1"></div>
+        </div>
+        <div id="model-modal-status" class="px-4 py-2 border-t border-zinc-200 text-[12px] text-zinc-500 min-h-[2rem] empty:hidden"></div>
+      </div>
+    </div>
+
+    <!-- Toast pill -->
+    <div id="toast" data-hidden="true"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-3 py-1.5 rounded-full text-[12px] bg-zinc-900 text-white shadow-md data-[hidden=true]:hidden"></div>
+  </div>
+
+  <script src="/static/dist/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>

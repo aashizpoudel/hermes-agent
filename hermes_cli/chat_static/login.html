@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Hermes — Sign in</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-50 text-zinc-900 antialiased min-h-[100dvh] flex items-center justify-center px-4">
+  <main class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-semibold tracking-tight text-zinc-900">Hermes</h1>
+      <p class="mt-1 text-sm text-zinc-500">Sign in to continue</p>
+    </div>
+    <form id="login-form" class="bg-white border border-zinc-200 rounded-xl shadow-sm p-5 space-y-4">
+      <label class="block">
+        <span class="block text-[12px] uppercase tracking-wider font-medium text-zinc-500 mb-1.5">Password</span>
+        <input id="pw" type="password" required autocomplete="current-password"
+          class="w-full rounded-md border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 px-3 py-2 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-violet-100 transition-colors"
+          placeholder="••••••••">
+      </label>
+      <button id="submit" type="submit"
+        class="w-full inline-flex items-center justify-center rounded-md bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-2 transition-colors">
+        Sign in
+      </button>
+      <p id="err" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"></p>
+    </form>
+    <p class="mt-4 text-center text-[12px] text-zinc-400">
+      Set <code class="font-mono">chatui.password</code> in
+      <code class="font-mono">~/.hermes/config.yaml</code>.
+    </p>
+  </main>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const pw = document.getElementById('pw');
+    const submit = document.getElementById('submit');
+    const errEl = document.getElementById('err');
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+    function clearError() {
+      errEl.classList.add('hidden');
+      errEl.textContent = '';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+      const password = pw.value;
+      if (!password) { showError('Enter the password.'); return; }
+      submit.disabled = true; submit.textContent = 'Signing in…';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password }),
+        });
+        if (res.status === 429) {
+          showError('Too many attempts. Try again in a moment.');
+        } else if (!res.ok) {
+          showError('Wrong password.');
+          pw.select();
+        } else {
+          const next = new URLSearchParams(location.search).get('next') || '/';
+          location.replace(next);
+          return;
+        }
+      } catch (_) {
+        showError('Network error.');
+      } finally {
+        submit.disabled = false; submit.textContent = 'Sign in';
+      }
+    });
+
+    pw.focus();
+
+    // Register the service worker here too, so the browser's PWA-install
+    // criteria are met from the login page (otherwise users can't install
+    // until they've signed in once).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

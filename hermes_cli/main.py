@@ -12265,6 +12265,29 @@ def cmd_dashboard(args):
     )
 
 
+def cmd_chatui(args):
+    """Start the chat web UI (FastAPI + PWA frontend)."""
+    try:
+        import fastapi  # noqa: F401
+        import uvicorn  # noqa: F401
+    except ImportError as e:
+        print("Chat UI dependencies not installed (need fastapi + uvicorn).")
+        print(
+            f"Install with:\n  {sys.executable} -m pip install 'fastapi' 'uvicorn[standard]'"
+        )
+        print(f"Import error: {e}")
+        sys.exit(1)
+
+    from hermes_cli.chat_server import start_server
+
+    start_server(
+        host=args.host,
+        port=args.port,
+        token=None,
+        open_browser=not args.no_open,
+    )
+
+
 def cmd_dashboard_register(args):
     """Register a self-hosted dashboard OAuth client with Nous Portal."""
     from hermes_cli.dashboard_register import cmd_dashboard_register as _impl
@@ -14613,6 +14636,27 @@ def main():
         cmd_dashboard_register=cmd_dashboard_register,
     )
 
+
+    # =========================================================================
+    # chatui command — FastAPI chat backend + PWA frontend
+    # (Named "chatui" to avoid collision with the existing interactive
+    # "chat" subcommand registered earlier in this file.)
+    # =========================================================================
+    chatui_parser = subparsers.add_parser(
+        "chatui",
+        help="Start the Hermes Chat web UI",
+        description="Launch a local FastAPI server hosting the Hermes Chat PWA frontend",
+    )
+    chatui_parser.add_argument(
+        "--host", default="127.0.0.1", help="Host to bind (default 127.0.0.1)"
+    )
+    chatui_parser.add_argument(
+        "--port", type=int, default=9120, help="Port to bind (default 9120)"
+    )
+    chatui_parser.add_argument(
+        "--no-open", action="store_true", help="Don't open the browser automatically"
+    )
+    chatui_parser.set_defaults(func=cmd_chatui)
 
     # =========================================================================
     # desktop (a.k.a. gui) command

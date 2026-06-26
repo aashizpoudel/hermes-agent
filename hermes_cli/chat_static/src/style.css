@@ -1,0 +1,159 @@
+/* Highlight.js theme — github style for code blocks */
+@import 'highlight.js/styles/github.css';
+
+/* Tailwind CSS — base, components, utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hermes — only what Tailwind can't do well: keyframes, SSE max-height transitions, scrollbar polish. */
+
+/* Message slide-in (applied via [data-anim="msg-in"]) */
+@keyframes hermes-msg-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+[data-anim="msg-in"] {
+  animation: hermes-msg-in 180ms ease-out both;
+  will-change: transform, opacity;
+}
+
+/* Status pill slide-in */
+@keyframes hermes-pill-slide {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+[data-anim="pill-in"] {
+  animation: hermes-pill-slide 220ms ease-out both;
+}
+
+/* Streaming cursor blink */
+@keyframes hermes-blink { 50% { opacity: 0; } }
+@keyframes hermes-fade-out { to { opacity: 0; } }
+[data-cursor] {
+  display: inline-block;
+  width: 0.55ch;
+  margin-left: 1px;
+  color: #7c3aed;
+  animation: hermes-blink 1s steps(2, start) infinite;
+}
+[data-cursor][data-fade="1"] {
+  animation: hermes-blink 1s steps(2, start) infinite, hermes-fade-out 280ms ease forwards;
+}
+
+/* Thinking-dots pulse (status line) */
+@keyframes hermes-dot-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+[data-dots] { display: inline-flex; gap: 3px; align-items: center; }
+[data-dots] > span {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor;
+  animation: hermes-dot-pulse 1.2s ease-in-out infinite;
+}
+[data-dots] > span:nth-child(2) { animation-delay: 0.15s; }
+[data-dots] > span:nth-child(3) { animation-delay: 0.30s; }
+
+/* Tool-call status dot pulse */
+@keyframes hermes-pulse { 50% { opacity: 0.4; } }
+[data-tool-dot="running"] { animation: hermes-pulse 1s ease-in-out infinite; }
+
+/* SSE-driven max-height transitions for collapse/expand */
+[data-collapsible] {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 220ms ease;
+}
+[data-collapsible][data-open="1"] { max-height: 1600px; }
+
+/* Caret rotation for tool/thinking headers */
+[data-caret] { transition: transform 180ms ease; display: inline-block; }
+[data-open="1"] > [data-caret],
+[data-open="1"] [data-caret] { transform: rotate(90deg); }
+
+/* Scrollbars */
+#chat-scroll::-webkit-scrollbar { width: 8px; }
+#chat-scroll::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+#chat-scroll::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+#chat-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Drag-over overlay (one-off) */
+body.drag-over::after {
+  content: "Drop image to attach";
+  position: fixed;
+  inset: 12px;
+  border: 2px dashed #7c3aed;
+  border-radius: 14px;
+  background: rgba(124, 58, 237, 0.06);
+  color: #6d28d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  z-index: 100;
+  pointer-events: none;
+  animation: hermes-msg-in 160ms ease-out;
+}
+
+/* Sidebar drawer slide */
+#sidebar {
+  transform: translateX(-100%);
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+#sidebar[data-open="true"] { transform: translateX(0); }
+
+/* Mobile: full-width sidebar, tighter composer */
+@media (max-width: 640px) {
+  #sidebar { width: 100vw; }
+  #model-modal-card { max-width: 100%; margin: 0.5rem; }
+  #messages { padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* Active session row left accent border animates from 0 -> 2px */
+.session-row {
+  border-left: 0px solid transparent;
+  transition: border-left-width 180ms ease, border-left-color 180ms ease, background-color 160ms ease;
+}
+.session-row[data-active="true"] {
+  border-left: 2px solid #7c3aed;
+}
+
+/* Model modal scale-in */
+@keyframes hermes-modal-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+#model-modal[data-open="true"] #model-modal-card {
+  animation: hermes-modal-in 160ms ease-out both;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+@keyframes hermes-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+#model-modal[data-open="true"] #model-modal-backdrop {
+  animation: hermes-backdrop-in 160ms ease-out both;
+}
+
+/* Tailwind Typography overrides for chat density */
+.prose :where(p):not(:where([class~="not-prose"] *)) { margin: 0.5em 0; }
+.prose :where(p):first-child { margin-top: 0; }
+.prose :where(p):last-child { margin-bottom: 0; }
+.prose :where(pre):not(:where([class~="not-prose"] *)) {
+  background-color: rgb(244 244 245);
+  border: 1px solid rgb(228 228 231);
+  border-radius: 8px;
+  color: rgb(24 24 27);
+}
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after { content: none; }
+.prose :where(code):not(:where([class~="not-prose"] *)) {
+  background-color: rgb(244 244 245);
+  border: 1px solid rgb(228 228 231);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-weight: 400;
+}
