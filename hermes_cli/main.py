@@ -12266,26 +12266,46 @@ def cmd_dashboard(args):
 
 
 def cmd_chatui(args):
-    """Start the chat web UI (FastAPI + PWA frontend)."""
-    try:
-        import fastapi  # noqa: F401
-        import uvicorn  # noqa: F401
-    except ImportError as e:
-        print("Chat UI dependencies not installed (need fastapi + uvicorn).")
-        print(
-            f"Install with:\n  {sys.executable} -m pip install 'fastapi' 'uvicorn[standard]'"
+    """ChatUI management commands."""
+    subcmd = getattr(args, "chatui_command", None)
+
+    if subcmd is None or subcmd == "run":
+        # Original foreground behavior — auto-install deps if missing
+        from hermes_cli.chatui_service import _ensure_dependencies
+        try:
+            import fastapi  # noqa: F401
+            import uvicorn  # noqa: F401
+        except ImportError:
+            _ensure_dependencies()
+
+        from hermes_cli.chat_server import start_server
+
+        start_server(
+            host=args.host,
+            port=args.port,
+            token=None,
+            open_browser=not args.no_open,
         )
-        print(f"Import error: {e}")
+        return
+
+    from hermes_cli import chatui_service
+
+    if subcmd == "install":
+        host = getattr(args, "host", "0.0.0.0")
+        port = getattr(args, "port", 9120)
+        force = getattr(args, "force", False)
+        chatui_service.install(host=host, port=port, force=force)
+    elif subcmd == "uninstall":
+        chatui_service.uninstall()
+    elif subcmd == "start":
+        chatui_service.start()
+    elif subcmd == "stop":
+        chatui_service.stop()
+    elif subcmd == "status":
+        chatui_service.status()
+    else:
+        print(f"Unknown chatui subcommand: {subcmd}")
         sys.exit(1)
-
-    from hermes_cli.chat_server import start_server
-
-    start_server(
-        host=args.host,
-        port=args.port,
-        token=None,
-        open_browser=not args.no_open,
-    )
 
 
 def cmd_dashboard_register(args):
@@ -14644,19 +14664,43 @@ def main():
     # =========================================================================
     chatui_parser = subparsers.add_parser(
         "chatui",
-        help="Start the Hermes Chat web UI",
-        description="Launch a local FastAPI server hosting the Hermes Chat PWA frontend",
+        help="Manage the Hermes Chat web UI",
+        description="Launch or manage the Hermes Chat PWA frontend",
     )
-    chatui_parser.add_argument(
-        "--host", default="127.0.0.1", help="Host to bind (default 127.0.0.1)"
-    )
-    chatui_parser.add_argument(
-        "--port", type=int, default=9120, help="Port to bind (default 9120)"
-    )
-    chatui_parser.add_argument(
-        "--no-open", action="store_true", help="Don't open the browser automatically"
-    )
-    chatui_parser.set_defaults(func=cmd_chatui)
+    chatui_sub = chatui_parser.add_subparsers(dest="chatui_command")
+
+    # hermes chatui run (default) — foreground mode
+    run_parser = chatui_sub.add_parser("run", help="Run chatui in foreground (default)")
+    run_parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default 127.0.0.1)")
+    run_parser.add_argument("--port", type=int, default=9120, help="Port to bind (default 9120)")
+    run_parser.add_argument("--no-open", action="store_true", help="Don't open the browser automatically")
+    run_parser.set_defaults(func=cmd_chatui)
+
+    # hermes chatui install
+    install_parser = chatui_sub.add_parser("install", help="Install systemd user service")
+    install_parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default 0.0.0.0)")
+    install_parser.add_argument("--port", type=int, default=9120, help="Port to bind (default 9120)")
+    install_parser.add_argument("--force", action="store_true", help="Force reinstall")
+    install_parser.set_defaults(func=cmd_chatui)
+
+    # hermes chatui uninstall
+    uninstall_parser = chatui_sub.add_parser("uninstall", help="Remove systemd user service")
+    uninstall_parser.set_defaults(func=cmd_chatui)
+
+    # hermes chatui start
+    start_parser = chatui_sub.add_parser("start", help="Start the service")
+    start_parser.set_defaults(func=cmd_chatui)
+
+    # hermes chatui stop
+    stop_parser = chatui_sub.add_parser("stop", help="Stop the service")
+    stop_parser.set_defaults(func=cmd_chatui)
+
+    # hermes chatui status
+    status_parser = chatui_sub.add_parser("status", help="Show service status")
+    status_parser.set_defaults(func=cmd_chatui)
+
+    # Default to run if no subcommand
+    chatui_parser.set_defaults(func=cmd_chatui, chatui_command="run")
 
     # =========================================================================
     # desktop (a.k.a. gui) command
