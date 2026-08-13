@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import queue
 import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from hermes_cli.config import load_config
-from run_agent import AIAgent
 
 from .media import _rewrite_media
+
+if TYPE_CHECKING:  # pragma: no cover
+    from run_agent import AIAgent
 from .state import _STREAMS
 
 # SessionDB import is best-effort — we fall back to in-memory only if the
@@ -27,6 +30,37 @@ except Exception:  # pragma: no cover
     _HAS_SESSION_DB = False
 
 logger = logging.getLogger(__name__)
+
+
+_TERMINAL_CWD_PLACEHOLDERS = {".", "auto", "cwd", ""}
+
+
+def _bridge_terminal_cwd(cfg: Dict[str, Any]) -> str:
+    """Bridge terminal.cwd to TERMINAL_CWD for ChatUI agent/tool paths.
+
+    ChatUI does not pass through gateway/run.py, so it must perform the same
+    config-to-env bridge itself.  Also push the cwd into the terminal tool's
+    default task override so an already-created shared ``default`` environment
+    (terminal_tool collapses ordinary task ids to that key) is updated instead
+    of silently preserving the process cwd.
+    """
+    terminal_cfg = cfg.get("terminal") or {}
+    config_cwd = terminal_cfg.get("cwd", ".") if isinstance(terminal_cfg, dict) else "."
+    if str(config_cwd) in _TERMINAL_CWD_PLACEHOLDERS:
+        cwd = str(Path.home())
+    else:
+        cwd = os.path.expanduser(str(config_cwd))
+
+    os.environ["TERMINAL_CWD"] = cwd
+
+    try:
+        from tools.terminal_tool import register_task_env_overrides
+
+        register_task_env_overrides("default", {"cwd": cwd})
+    except Exception:
+        logger.debug("could not sync ChatUI terminal cwd override", exc_info=True)
+
+    return cwd
 
 
 class AgentRunner:
@@ -281,11 +315,15 @@ class AgentRunner:
             base_url = (model_cfg.get("base_url") or "").strip() or None
             api_key = (model_cfg.get("api_key") or "").strip() or None
 
+            _bridge_terminal_cwd(cfg)
+
             if not model:
                 raise RuntimeError(
                     "No model configured.  Set model.default in "
                     "~/.hermes/config.yaml or run 'hermes setup'."
                 )
+
+            from run_agent import AIAgent
 
             self.agent = AIAgent(
                 model=model,
